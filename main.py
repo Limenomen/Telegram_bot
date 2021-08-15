@@ -2,10 +2,11 @@ import telebot
 from telebot import types
 import database
 from config import TOKEN
+from datetime import datetime
 
 bot = telebot.TeleBot(TOKEN)
 database.create_tables()
-database.check_all_users()
+#database.check_all_users()
 
 
 @bot.message_handler(commands=['start'])
@@ -41,11 +42,41 @@ def get_name(message):
     name = message.text
     database.add_user(message.from_user.id, message.from_user.username, name)
     bot.send_message(message.from_user.id, "Готово, теперь можно планировать задачи.")
+    send_help(message)
+
+
+@bot.callback_query_handler(func=lambda call: call.data == 'add_task')
+def get_task(call):
+    ask_a_question = bot.send_message(call.from_user.id, f"Введите название задания")
+    bot.register_next_step_handler(ask_a_question, get_task_name)
+
+
+def get_task_name(message):
+    task_name = message.text
+    ask_a_question = bot.send_message(message.from_user.id, f"Введите дату и время напоминания в следующем формате: день-месяц-год часы.минуты")
+    bot.register_next_step_handler(ask_a_question, get_task_time, task_name)
+
+
+def get_task_time(message, task_name):
+    try:
+        task_date = message.text
+        task_date = datetime.strptime(task_date, "%d-%m-%Y %H.%M")
+        register_task(message, task_name, task_date)
+    except Exception as e:
+        ask_a_question = bot.send_message(message.from_user.id, f"Возможно неверный ввод, попробуйте еще раз.")
+        bot.register_next_step_handler(ask_a_question, get_task_time, task_name)
+        print(e)
+
+
+def register_task(message, task_name, task_date):
+    database.add_task(message.from_user.id, task_name, task_date)
+    bot.send_message(message.from_user.id, f"Готово, я обязательно вам об этом напомню.")
+    send_help(message)
 
 
 @bot.message_handler(content_types=['text'])
 def get_text_messages(message):
-    bot.send_message(message.from_user.id, f"а я ничего и не понял, воспользуйся лучше командами - /help")
+    bot.send_message(message.from_user.id, f"A я ничего и не понял, воспользуйтесь лучше командами - /help")
 
 
 def main():
