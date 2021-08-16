@@ -54,7 +54,9 @@ def add_task(user_id, task_name, task_date):
 
 def check_all_users():
     check_all_query = f'SELECT * FROM users'
-    sql_query(check_all_query)
+    return sql_query(check_all_query)
 
 
-
+def check_all_tasks():
+    check_all_query = f'SELECT * FROM tasks'
+    return sql_query(check_all_query)

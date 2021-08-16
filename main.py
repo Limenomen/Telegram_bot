@@ -3,6 +3,8 @@ from telebot import types
 import database
 from config import TOKEN
 from datetime import datetime
+from threading import Thread
+from time import sleep
 
 bot = telebot.TeleBot(TOKEN)
 database.create_tables()
@@ -60,7 +62,7 @@ def get_task_name(message):
 def get_task_time(message, task_name):
     try:
         task_date = message.text
-        task_date = datetime.strptime(task_date, "%d-%m-%Y %H.%M")
+        datetime.strptime(task_date, "%d-%m-%Y %H.%M").strftime("%d-%m-%Y %H:%M")
         register_task(message, task_name, task_date)
     except Exception as e:
         ask_a_question = bot.send_message(message.from_user.id, f"Возможно неверный ввод, попробуйте еще раз.")
@@ -79,7 +81,29 @@ def get_text_messages(message):
     bot.send_message(message.from_user.id, f"A я ничего и не понял, воспользуйтесь лучше командами - /help")
 
 
+def make_dict(data):
+    keys = ('task_id', 'task_name', 'task_date', 'user_id')
+    for index in range(len(data)):
+        data[index] = dict(zip(keys, data[index]))
+    return data
+
+
+def task_search():
+    while True:
+        data = database.check_all_tasks()
+        tasks = make_dict(data)
+        now = datetime.now()
+        if tasks:
+            for task in tasks:
+                task_date = datetime.strptime(task['task_date'], "%d-%m-%Y %H.%M")
+                if task_date.hour == now.hour and task_date.minute == now.minute:
+                    bot.send_message(task['user_id'], f"Напоминаю, сейчас {task['task_name']}!")
+        sleep(60)
+
+
 def main():
+    task_search_thread = Thread(target=task_search, daemon=True)
+    task_search_thread.start()
     bot.polling()
     pass
 
