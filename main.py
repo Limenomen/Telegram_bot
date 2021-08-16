@@ -81,7 +81,26 @@ def get_text_messages(message):
     bot.send_message(message.from_user.id, f"A я ничего и не понял, воспользуйтесь лучше командами - /help")
 
 
-def make_dict(data):
+@bot.callback_query_handler(func=lambda call: call.data == 'delete_task')
+def get_task_list(call):
+    tasks = make_tasks_dict(database.get_task_for_user(call.from_user.id))
+    task_list_markup = types.InlineKeyboardMarkup()
+    for task in tasks:
+        task_list_markup.add(types.InlineKeyboardButton(text=task['task_name'],
+                                                        callback_data=f"task + {task['task_id']}"))
+    bot.send_message(call.from_user.id, f"Выберите задачу, которую хотите удалить:", reply_markup=task_list_markup)
+
+
+@bot.callback_query_handler(func=lambda call: True)
+def delete_task(call):
+    if call.data.startswith('task'):
+        task_id = call.data.replace("task", "").strip()
+        database.delete_task(task_id)
+        bot.send_message(call.from_user.id, f"задача удалена.")
+        send_help(call)
+
+
+def make_tasks_dict(data):
     keys = ('task_id', 'task_name', 'task_date', 'user_id')
     for index in range(len(data)):
         data[index] = dict(zip(keys, data[index]))
@@ -91,13 +110,14 @@ def make_dict(data):
 def task_search():
     while True:
         data = database.check_all_tasks()
-        tasks = make_dict(data)
+        tasks = make_tasks_dict(data)
         now = datetime.now()
         if tasks:
             for task in tasks:
                 task_date = datetime.strptime(task['task_date'], "%d-%m-%Y %H.%M")
                 if task_date.hour == now.hour and task_date.minute == now.minute:
                     bot.send_message(task['user_id'], f"Напоминаю, сейчас {task['task_name']}!")
+                    database.delete_task(task['task_id'])
         sleep(60)
 
 

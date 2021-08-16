@@ -52,6 +52,16 @@ def add_task(user_id, task_name, task_date):
     sql_query(insert_task_query)
 
 
+def get_task_for_user(user_id):
+    get_query = f'SELECT * FROM tasks WHERE user_id = {user_id}'
+    return sql_query(get_query)
+
+
+def delete_task(task_id):
+    delete_query = f'DELETE FROM tasks WHERE task_id = {task_id}'
+    sql_query(delete_query)
+
+
 def check_all_users():
     check_all_query = f'SELECT * FROM users'
     return sql_query(check_all_query)
